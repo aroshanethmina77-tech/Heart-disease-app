@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heart Disease Predictor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f0f2f5;
+            padding-top: 50px;
+            font-family: Arial, sans-serif;
+        }
+        .card {
+            max-width: 750px;
+            margin: auto;
+        }
+        .ai-box {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-left: 5px solid #0d6efd;
+            border-radius: 5px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+        }
+        .tips-list li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card shadow">
+            <div class="card-body">
+                <h3 class="card-title text-center mb-4">Heart Disease Predictor</h3>
+                
+                <form id="predictionForm">
+                    <div class="row g-3">
+                        <!-- Input Fields -->
+                        <div class="col-md-6"><label>Age</label><input type="number" class="form-control" name="Age" required></div>
+                        <div class="col-md-6"><label>Sex (0=Female, 1=Male)</label><input type="number" class="form-control" name="Sex" required></div>
+                        <div class="col-md-6"><label>Chest Pain Type (0-3)</label><input type="number" class="form-control" name="Chest pain type" required></div>
+                        <div class="col-md-6"><label>BP (Systolic)</label><input type="number" class="form-control" name="BP" required></div>
+                        <div class="col-md-6"><label>Cholesterol</label><input type="number" class="form-control" name="Cholesterol" required></div>
+                        <div class="col-md-6"><label>FBS over 120 (0=No, 1=Yes)</label><input type="number" class="form-control" name="FBS over 120" required></div>
+                        <div class="col-md-6"><label>EKG Results (0-2)</label><input type="number" class="form-control" name="EKG results" required></div>
+                        <div class="col-md-6"><label>Max HR</label><input type="number" class="form-control" name="Max HR" required></div>
+                        <div class="col-md-6"><label>Exercise Angina (0=No, 1=Yes)</label><input type="number" class="form-control" name="Exercise angina" required></div>
+                        <div class="col-md-6"><label>ST Depression</label><input type="number" class="form-control" name="ST depression" step="0.1" required></div>
+                        <div class="col-md-6"><label>Slope of ST (0-2)</label><input type="number" class="form-control" name="Slope of ST" required></div>
+                        <div class="col-md-6"><label>Number of Vessels Fluro (0-3)</label><input type="number" class="form-control" name="Number of vessels fluro" required></div>
+                        <div class="col-md-6"><label>Thallium (0-3)</label><input type="number" class="form-control" name="Thallium" required></div>
+                    </div>
+
+                    <div class="mt-4 text-center">
+                        <button type="submit" class="btn btn-primary btn-lg">Predict</button>
+                    </div>
+                </form>
+
+                <hr>
+
+                <div id="resultContainer" class="d-none">
+                    <h5 class="mt-3">Prediction Result:</h5>
+                    <div id="predictionResult" class="alert alert-primary"></div>
+
+                    <h5 class="mt-3">AI Doctor Advice:</h5>
+                    <div id="aiAdvice" class="ai-box"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('predictionForm');
+        const resultContainer = document.getElementById('resultContainer');
+        const predictionResult = document.getElementById('predictionResult');
+        const aiAdvice = document.getElementById('aiAdvice');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const jsonData = {};
+            formData.forEach((value, key) => jsonData[key] = value);
+
+            predictionResult.textContent = 'Predicting... ⏳';
+            aiAdvice.textContent = '';
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(jsonData)
+                });
+                const data = await response.json();
+
+                if(data.status === 'success'){
+                    resultContainer.classList.remove('d-none');
+
+                    // Show prediction
+                    predictionResult.textContent = data.prediction;
+
+                    // Parse AI advice into score, review, tips
+                    let aiText = data.ai_data || 'No advice available';
+                    let lines = aiText.split('\n').map(l => l.trim()).filter(l => l);
+
+                    let score = lines.find(l => l.toUpperCase().startsWith('SCORE:')) || '';
+                    let review = lines.find(l => l.toUpperCase().startsWith('REVIEW:')) || '';
+                    let tipsLine = lines.find(l => l.toUpperCase().startsWith('TIPS:')) || '';
+
+                    let tips = tipsLine.replace(/^TIPS:\s*/i,'').split(/,|\n|-/).filter(t => t.trim());
+
+                    aiAdvice.innerHTML = `<strong>${score}</strong>\n${review}<br><ul class="tips-list">${tips.map(t => `<li>${t.trim()}</li>`).join('')}</ul>`;
+                } else {
+                    predictionResult.textContent = `Error: ${data.error}`;
+                }
+            } catch(err) {
+                predictionResult.textContent = `Request Failed: ${err}`;
+            }
+        });
+    </script>
+</body>
+</html>
